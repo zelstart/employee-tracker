@@ -278,6 +278,44 @@ async function addRoles() {
 }
 
 //add departments
+async function addDepartment() {
+  try {
+    const answers = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'department',
+        message: "What is the name of this department?"
+      }
+    ]);
+// insert new row using answers
+    const insertQuery = `
+      INSERT INTO departments (name)
+      VALUES (?)`;
+
+    await db.execute(insertQuery, [answers.department]);
+
+    console.log('New department was successfully added to the database!');
+// ask user if they want to add another dept or go back to main menu
+    const { continueOption } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'continueOption',
+        message: 'Do you want to add another department or go back to the main menu?',
+        choices: ['Add Another Department', 'Go Back to Main Menu']
+      }
+    ]);
+
+    if (continueOption === 'Add Another Department') {
+      await addDepartment();
+    } else {
+      mainMenu();
+    }
+
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 
 // view all employees
 function viewEmployees() {
