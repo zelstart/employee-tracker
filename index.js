@@ -83,7 +83,7 @@ function mainMenu() {
         choices: [
           'View All Employees',
           'Add Employee',
-          'Update Employee Role',
+          'Update Employees',
           'View All Roles',
           'Add Role',
           'View All Departments',
@@ -104,8 +104,8 @@ function mainMenu() {
           addEmployee();
           break;
 
-        case "Update Employee Role":
-          updateRole();
+        case "Update Employees":
+          updateEmployees();
           break;
 
         case "View All Roles":
@@ -147,8 +147,6 @@ async function addEmployee() {
     // convert roles to choices format
     const roleChoices = roles.map(role => role.title);
     const managerNames = managers.map(employee => `${employee.first_name} ${employee.last_name}`);
-    // add an option for no manager
-    managerNames.unshift('none')
 
     const answers = await inquirer.prompt([
       {
@@ -171,7 +169,7 @@ async function addEmployee() {
         type: 'list',
         name: 'manager',
         message: "Who is the employee's manager?",
-        choices: managerNames
+        choices: [...managerNames, 'none']
       },
     ]);
 
@@ -180,7 +178,6 @@ async function addEmployee() {
     const role_id = selectedRole.id;
 
     // get manager_id based on selected manager name. if mangager was set to null, sets manager_id to null as well.
-    // const selectedManager = managers.find(employee => `${employee.first_name} ${employee.last_name}` === answers.manager);
     const manager_id = answers.manager === 'none' ? null : managers.find(employee => `${employee.first_name} ${employee.last_name}` === answers.manager).id;
 
     // insert new employee data into employees table
@@ -214,6 +211,143 @@ async function addEmployee() {
 }
 
 // update employees
+async function updateEmployees() {
+  try {
+    // run these functions first so we can populate lists with current data
+    const employees = await getEmployees();
+    const roles = await getRoles();
+    const employeeNames = employees.map(employee => `${employee.first_name} ${employee.last_name}`);
+    const roleTitles = roles.map(role => role.title);
+
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'employee',
+        message: "Which employee do you want to update?",
+        choices: employeeNames
+      },
+      {
+        type: 'list',
+        name: 'action',
+        message: "Which field would you like to update?",
+        choices: [
+          'Name',
+          'Role',
+          'Manager'
+        ]
+      }
+    ]);
+
+    const selectedEmployee = employees.find(employee => `${employee.first_name} ${employee.last_name}` === answers.employee);
+
+    // !!! NAME CASE !!!
+    switch (answers.action) {
+      case "Name":
+        const nameAnswers = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'firstName',
+            message: "Employee First Name:",
+            default: selectedEmployee.first_name
+          },
+          {
+            type: 'input',
+            name: 'lastName',
+            message: "Employee Last Name:",
+            default: selectedEmployee.last_name
+          }
+        ]);
+
+        const updateQuery = `
+          UPDATE employees
+          SET
+          first_name = ?,
+          last_name = ?
+          WHERE id = ?
+        `;
+
+        await db.execute(updateQuery, [nameAnswers.firstName, nameAnswers.lastName, selectedEmployee.id]);
+
+        console.log('Employee name updated successfully!');
+        break;
+
+      // !!! ROLE CASE !!!
+      case "Role":
+        const roleAnswers = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'role',
+            message: "What is this employee's new role?",
+            choices: roleTitles,
+            default: roles.find(role => role.id === selectedEmployee.role_id).title
+          }
+        ]);
+
+        const selectedRole = roles.find(role => role.title === roleAnswers.role);
+
+        const updateRoleQuery = `
+          UPDATE employees
+          SET
+          role_id = ?
+          WHERE id = ?
+        `;
+
+        await db.execute(updateRoleQuery, [selectedRole.id, selectedEmployee.id]);
+
+        console.log('Employee role updated successfully!');
+        break;
+
+      // !!! MANAGER CASE !!!
+      case "Manager":
+        const managerAnswers = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'manager',
+            message: "Who is this employee's new manager?",
+            choices: [...employeeNames, 'none'],
+            default: selectedEmployee.manager_id ? employees.find(employee => employee.id === selectedEmployee.manager_id).id : 'none'
+          }
+        ]);
+      
+        // get manager's id by using their first & last names
+        const selectedManager = managerAnswers.manager === 'none' ? null : employees.find(employee => employee.id === parseInt(managerAnswers.manager));
+      
+        const updateManagerQuery = `
+          UPDATE employees
+          SET
+          manager_id = ?
+          WHERE id = ?
+        `;
+      
+        await db.execute(updateManagerQuery, [selectedManager ? selectedManager.id : null, selectedEmployee.id]);
+      
+        console.log('Employee manager updated successfully!');
+        break;
+
+      default:
+        console.log("Invalid action");
+    }
+
+// ask user if they'd like to continue or go back to main menu
+    const { continueOption } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'continueOption',
+        message: 'Do you want to update more employees?',
+        choices: ['Update Employees', 'Go Back to Main Menu']
+      }
+    ]);
+
+    if (continueOption === 'Update Employees') {
+      await updateEmployees();
+    } else {
+      mainMenu();
+    }
+
+  } catch (error) {
+    console.error(error);
+  }
+}
 
 // add roles
 async function addRoles() {
@@ -277,7 +411,7 @@ async function addRoles() {
   }
 }
 
-//add departments
+// add departments
 async function addDepartment() {
   try {
     const answers = await inquirer.prompt([
@@ -287,7 +421,7 @@ async function addDepartment() {
         message: "What is the name of this department?"
       }
     ]);
-// insert new row using answers
+    // insert new row using answers
     const insertQuery = `
       INSERT INTO departments (name)
       VALUES (?)`;
@@ -295,7 +429,7 @@ async function addDepartment() {
     await db.execute(insertQuery, [answers.department]);
 
     console.log('New department was successfully added to the database!');
-// ask user if they want to add another dept or go back to main menu
+    // ask user if they want to add another dept or go back to main menu
     const { continueOption } = await inquirer.prompt([
       {
         type: 'list',
@@ -319,12 +453,14 @@ async function addDepartment() {
 
 // view all employees
 function viewEmployees() {
-  const query = ``
+  const sql = `
+  `
 }
 
 // view all roles
 function viewRoles() {
-  const query = ``
+  const sql = `
+  `
 }
 
 // view all departments
