@@ -2,6 +2,7 @@
 const fs = require('fs');
 const inquirer = require('inquirer');
 const mysql = require('mysql2');
+const Table = require('cli-table');
 require('dotenv').config();
 
 // connect to database
@@ -72,7 +73,7 @@ function getEmployees() {
 }
 
 
-// initial menu
+// MAIN MENU
 function mainMenu() {
   inquirer
     .prompt([
@@ -137,7 +138,7 @@ function mainMenu() {
 }
 
 
-// add employee function
+// ADD EMPLOYEES
 async function addEmployee() {
   try {
     // async to wait for these functions to complete before continuing
@@ -210,7 +211,7 @@ async function addEmployee() {
   }
 }
 
-// update employees
+// UPDATE EMPLOYEES
 async function updateEmployees() {
   try {
     // run these functions first so we can populate lists with current data
@@ -308,19 +309,19 @@ async function updateEmployees() {
             default: selectedEmployee.manager_id ? employees.find(employee => employee.id === selectedEmployee.manager_id).id : 'none'
           }
         ]);
-      
+
         // get manager's id by using their first & last names
         const selectedManager = managerAnswers.manager === 'none' ? null : employees.find(employee => employee.id === parseInt(managerAnswers.manager));
-      
+
         const updateManagerQuery = `
           UPDATE employees
           SET
           manager_id = ?
           WHERE id = ?
         `;
-      
+
         await db.execute(updateManagerQuery, [selectedManager ? selectedManager.id : null, selectedEmployee.id]);
-      
+
         console.log('Employee manager updated successfully!');
         break;
 
@@ -328,7 +329,7 @@ async function updateEmployees() {
         console.log("Invalid action");
     }
 
-// ask user if they'd like to continue or go back to main menu
+    // ask user if they'd like to continue or go back to main menu
     const { continueOption } = await inquirer.prompt([
       {
         type: 'list',
@@ -349,7 +350,7 @@ async function updateEmployees() {
   }
 }
 
-// add roles
+// ADD ROLES
 async function addRoles() {
   try {
     // async to wait for this function to complete before continuing
@@ -411,7 +412,7 @@ async function addRoles() {
   }
 }
 
-// add departments
+// ADD DEPARTMENTS
 async function addDepartment() {
   try {
     const answers = await inquirer.prompt([
@@ -451,21 +452,165 @@ async function addDepartment() {
 }
 
 
-// view all employees
+// VIEW ALL EMPLOYEES
 function viewEmployees() {
-  const sql = `
-  `
+  // drop the view if it exists
+  const dropView = `DROP VIEW IF EXISTS view_employees;`;
+
+  db.execute(dropView, function (err, results, fields) {
+    if (err) {
+      console.error(err.message);
+      return;
+    }
+// create a new view of the joined tables
+    const createView = `
+      CREATE VIEW view_employees AS
+      SELECT 
+        e.id AS id,
+        e.first_name AS first_name,
+        e.last_name AS last_name,
+        r.title AS title,
+        d.name AS department,
+        r.salary AS salary,
+        CONCAT(m.first_name, ' ', m.last_name) AS manager
+      FROM employees e
+      JOIN roles r ON e.role_id = r.id
+      JOIN departments d ON r.department_id = d.id
+      LEFT JOIN employees m ON e.manager_id = m.id;
+    `;
+
+    db.execute(createView, function (err, results, fields) {
+      if (err) {
+        console.error(err.message);
+        return;
+      }
+
+      const sql = `SELECT * FROM view_employees`;
+
+      db.execute(sql, function (err, results, fields) {
+        if (err) {
+          console.error(err.message);
+          return;
+        }
+        // create a cli table for the view. this might be overly complicated but i couldn't find any other way to make a table that looked like the example??
+        const table = new Table({
+          head: ['ID', 'First Name', 'Last Name', 'Title', 'Department', 'Salary', 'Manager']
+        });
+
+        results.forEach(employee => {
+          // Replace null manager with "N/A"
+          const manager = employee.manager || "N/A";
+          table.push([employee.id, employee.first_name, employee.last_name, employee.title, employee.department, employee.salary, manager]);
+        });
+
+        console.log(table.toString());
+
+        mainMenu();
+      });
+    });
+  });
 }
 
-// view all roles
+
+
+// VIEW ALL ROLES
 function viewRoles() {
-  const sql = `
-  `
+  const dropView = `DROP VIEW IF EXISTS view_roles;`;
+
+  db.execute(dropView, function (err, results, fields) {
+    if (err) {
+      console.error(err.message);
+      return;
+    }
+
+    const createView = `
+      CREATE VIEW view_roles AS
+      SELECT 
+        r.id AS ID,
+        r.title AS Title,
+        r.salary AS Salary,
+        d.name AS Department
+      FROM roles r
+      JOIN departments d ON r.department_id = d.id;
+    `;
+
+    db.execute(createView, function (err, results, fields) {
+      if (err) {
+        console.error(err.message);
+        return;
+      }
+
+      const sql = `SELECT * FROM view_roles`;
+
+      db.execute(sql, function (err, results, fields) {
+        if (err) {
+          console.error(err.message);
+          return;
+        }
+
+        const table = new Table({
+          head: ['ID', 'Title', 'Salary', 'Department']
+        });
+
+        results.forEach(role => {
+          table.push([role.ID, role.Title, role.Salary, role.Department]);
+        });
+
+        console.log(table.toString());
+
+        mainMenu();
+      });
+    });
+  });
 }
 
-// view all departments
+
+// VIEW ALL DEPARTMENTS
 function viewDepartments() {
-  const sql = `SELECT id AS ID, name AS Department FROM departments`
+  const dropView = `DROP VIEW IF EXISTS view_departments;`;
+
+  db.execute(dropView, function (err, results, fields) {
+    if (err) {
+      console.error(err.message);
+      return;
+    }
+
+    const createView = `
+      CREATE VIEW view_departments AS
+      SELECT 
+        d.id AS ID,
+        d.name AS Department
+      FROM departments d;
+    `;
+
+    db.execute(createView, function (err, results, fields) {
+      if (err) {
+        console.error(err.message);
+        return;
+      }
+
+      const sql = `SELECT * FROM view_departments`;
+
+      db.execute(sql, function (err, results, fields) {
+        if (err) {
+          console.error(err.message);
+          return;
+        }
+
+        const table = new Table({
+          head: ['ID', 'Department']
+        });
+
+        results.forEach(department => {
+          table.push([department.ID, department.Department]);
+        });
+
+        console.log(table.toString());
+
+        mainMenu();
+      });
+    });
+  });
 }
 
 
