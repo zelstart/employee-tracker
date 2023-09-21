@@ -463,11 +463,11 @@ async function addDepartment() {
 }
 // DELETE ROWS
   // ** this doesn't work exactly as intended - i wanted to add in a check that made sure that deleted dept's didn't have roles associated with them, and that 
-  // deleted roles didn't have employees associated with them, if you deleted managers you'd have to reassign a new manager to employees...
-  // but it kept giving me errors and i ran out of time. so for now, you just have to be mindful what you're deleting!! **
+  // deleted roles didn't have employees associated with them, if you deleted managers you'd have to reassign a new manager to employees etc...
+  // but it kept giving me errors and i ran out of time. so for now, you just have to be mindful what you're deleting!!  **
 async function deleteRows() {
   try {
-    // get info from the tables
+    // get info from the tables 
     const departments = await getDepartments();
     const roles = await getRoles();
     const employees = await getEmployees();
@@ -486,9 +486,10 @@ async function deleteRows() {
     ]);
 
     switch (answers.choice) {
-      // back to main menu
+      // QUIT 
       case "Quit":
         return mainMenu(); // go back to main menu
+      
       // DEPARTMENTS
       case "Departments":
         const deptAnswers = await inquirer.prompt([
@@ -582,7 +583,7 @@ async function deleteRows() {
 }
 
 // ** the "view" options all feel overly complicated, but i couldn't figure out any other way to get the tables
-// in the console log to look like the ones in the mockup **
+// in the console log to look like the ones in the mockup. console.table(results) was the closest but i didn't like the way it worked **
 
 // VIEW ALL EMPLOYEES
 function viewEmployees() {
