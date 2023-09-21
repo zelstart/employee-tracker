@@ -30,9 +30,11 @@ To get started, follow these steps:
 [Demo](https://watch.screencastify.com/v/0PmO5dbjOQVaNxwEfTB6)  
 If the link above isn't working for some reason, you can find a demo video in the /assets/demo-videos folder!  
 
+Login to mysql + set up the database, tables and seeds by using `source db/schema.sql` and `source db/seeds.sql`.  
 Ensure that you modify the `.env.example` file to contain your mysql user and password, and rename the file to `.env`
 Once you've installed the dependencies and set up your .env file, you can start the application by running: `npm start`
-Use the arrow keys to navigate through the menus and follow the prompts to perform various operations.
+Use the arrow keys to navigate through the menus and follow the prompts to perform various operations.  
+
 
 ## Credits
 [Stack Overflow thread - mysql & inquirer](https://stackoverflow.com/questions/66626936/inquirer-js-populate-list-choices-from-sql-database).
