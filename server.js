@@ -238,7 +238,9 @@ async function updateEmployees() {
         choices: [
           'Name',
           'Role',
-          'Manager'
+          'Manager',
+          'Go Back',
+          'Quit'
         ]
       }
     ]);
@@ -329,8 +331,13 @@ async function updateEmployees() {
         console.log('Employee manager updated successfully!');
         break;
 
-      default:
-        console.log("Invalid action");
+      case "Go Back":
+        await updateEmployees();
+        break;
+
+      case "Quit": 
+      await mainMenu();
+      break;
     }
 
     // ask user if they'd like to continue or go back to main menu
